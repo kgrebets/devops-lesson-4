@@ -1,6 +1,25 @@
 services:
 
-  # Django application
+  # PostgreSQL database
+  db:
+    # Use official PostgreSQL image
+    image: postgres:17
+
+    # Load database settings from .env
+    env_file:
+      - .env
+
+    # Persist database files between container restarts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+      # Django application
   web:
     # Build image from Dockerfile in ./app
     build: ./app
@@ -15,20 +34,8 @@ services:
 
     # Start after PostgreSQL container
     depends_on:
-      - db
-
-  # PostgreSQL database
-  db:
-    # Use official PostgreSQL image
-    image: postgres:17
-
-    # Load database settings from .env
-    env_file:
-      - .env
-
-    # Persist database files between container restarts
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      db:
+        condition: service_healthy
 
   # Web server
   nginx:
@@ -46,6 +53,7 @@ services:
     # Start after Django container
     depends_on:
       - web
+        
 
 # Named volume for PostgreSQL data persistence
 volumes:
